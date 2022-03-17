@@ -20,11 +20,7 @@ public class MainHashMap {
             }
         });
         thread1.start();
-        /*try {
-            Thread.sleep(10);
-        } catch (Exception ignored) {}*/
         thread2.start();
-
     }
 }
 
