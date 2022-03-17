@@ -1,4 +1,4 @@
-package taskSecond;
+package task2;
 
 import java.util.LinkedList;
 import java.util.List;

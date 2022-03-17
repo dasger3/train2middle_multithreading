@@ -1,4 +1,4 @@
-package taskFirst;
+package task1;
 
 import java.util.Collections;
 import java.util.HashMap;
