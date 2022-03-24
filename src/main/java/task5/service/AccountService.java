@@ -2,8 +2,8 @@ package task5.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
-import task5.Constants;
 import task5.exception.ObjectNotFoundException;
 import task5.model.Account;
 import task5.model.Currency;
@@ -20,10 +20,9 @@ public class AccountService {
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
     private final AccountRepository accountRepository;
 
-
-    public AccountService(AccountRepository accountRepository) {
+    public AccountService(AccountRepository accountRepository, Environment environment) {
         this.accountRepository = accountRepository;
-        initFromListOfFiles(Constants.TEMPLATE_ACCOUNT_FILES);
+        initFromListOfFiles(environment.getRequiredProperty("template.account.files", String[].class));
     }
 
     public Account findAccountById(Long id) throws ObjectNotFoundException {

@@ -1,10 +1,12 @@
 package task5;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.PropertySource;
 import task5.model.Currency;
-import task5.repository.AccountRepository;
 import task5.service.AccountService;
-import task5.service.ExchangeRateService;
 import task5.service.ExchangerService;
 
 import java.math.BigDecimal;
@@ -12,15 +14,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @SpringBootApplication
-public class Main {
+@RequiredArgsConstructor
+@PropertySource("classpath:application.properties")
+public class Main implements CommandLineRunner {
+
+    private final AccountService accountService;
+    private final ExchangerService exchangerService;
+
     public static void main(String[] args) {
+        SpringApplication.run(Main.class, args);
+    }
+
+    @Override
+    public void run(String... args) {
         try {
-            AccountRepository accountRepository = new AccountRepository();
-            AccountService accountService = new AccountService(accountRepository);
-            ExchangeRateService exchangeRateService = new ExchangeRateService();
-
-            ExchangerService exchangerService = new ExchangerService(accountService, exchangeRateService);
-
             accountService.printAccounts();
 
             ExecutorService service = Executors.newFixedThreadPool(3);

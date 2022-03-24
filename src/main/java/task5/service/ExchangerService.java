@@ -1,49 +1,76 @@
 package task5.service;
 
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import task5.exception.NotEnoughMoneyException;
 import task5.exception.ObjectNotFoundException;
 import task5.model.Currency;
+import task5.model.Exchange;
 import task5.model.Wallet;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 public class ExchangerService {
     private final AccountService accountService;
     private final ExchangeRateService exchangeRateService;
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
 
-    public synchronized void exchange(Long accountId, Currency from, Currency to, BigDecimal value) {
+    private final Map<UUID, Exchange> queue = new ConcurrentHashMap<>();
+
+    public ExchangerService(AccountService accountService, ExchangeRateService exchangeRateService) {
+        this.accountService = accountService;
+        this.exchangeRateService = exchangeRateService;
+    }
+
+    public void exchange(Long accountId, Currency from, Currency to, BigDecimal value) {
+
+        Exchange exchange = new Exchange(accountId, from, to, value);
         UUID uniqueKey = UUID.randomUUID();
-        try {
-            System.out.println(
-                    "Exchange with number: " + uniqueKey + "with params: " + accountId + "|" + from + "|" + to +
-                            "|" + value);
-            Wallet wallet = accountService.findAccountById(accountId).getWallet();
+        queue.put(uniqueKey, exchange);
+        run();
+    }
 
-            BigDecimal rate = exchangeRateService.getExchangeRate(from, to);
+    public synchronized void run() {
+            for (Map.Entry<UUID, Exchange> uuidExchangeEntry : queue.entrySet()) {
 
-            BigDecimal newBalance = wallet.getBalance().get(from).subtract(value);
+                UUID uniqueKey = uuidExchangeEntry.getKey();
+                Long accountId = uuidExchangeEntry.getValue().getAccountId();
+                Currency from = uuidExchangeEntry.getValue().getFrom();
+                Currency to = uuidExchangeEntry.getValue().getTo();
+                BigDecimal value = uuidExchangeEntry.getValue().getValue();
 
-            if (newBalance.doubleValue() < 0) {
-                throw new NotEnoughMoneyException(from.getCurrency());
+                try {
+
+                    System.out.println(
+                            "Exchange with number: " + uniqueKey + " with params: " + accountId + "|" + from + "|" +
+                                    to +
+                                    "|" + value);
+                    Wallet wallet = accountService.findAccountById(accountId).getWallet();
+
+                    BigDecimal rate = exchangeRateService.getExchangeRate(from, to);
+
+                    BigDecimal newBalance = wallet.getBalance().get(from).subtract(value);
+
+                    if (newBalance.doubleValue() < 0) {
+                        throw new NotEnoughMoneyException(from.getCurrency());
+                    }
+
+                    wallet.getBalance().put(from, newBalance);
+                    wallet.getBalance().put(to, wallet.getBalance().get(to).add(value.multiply(rate)));
+
+                    accountService.updateWalletById(wallet, accountId);
+                    System.out.println("Exchange with number: " + uniqueKey + " successfully completed");
+                } catch (ObjectNotFoundException | NotEnoughMoneyException e) {
+                    log.error(e.getMessage());
+                    System.out.println("Exchange with number: " + uniqueKey + " completed unsuccessfully");
+                } finally {
+                    queue.remove(uniqueKey);
+                }
             }
-
-            wallet.getBalance().put(from, newBalance);
-            wallet.getBalance().put(to, wallet.getBalance().get(to).add(value.multiply(rate)));
-
-            accountService.updateWalletById(wallet, accountId);
-            System.out.println("Transaction with number: " + uniqueKey + " successfully completed");
-        } catch (ObjectNotFoundException | NotEnoughMoneyException e) {
-            log.error(e.getMessage());
-            System.out.println("Transaction with number: " + uniqueKey + " completed unsuccessfully");
-        }
-
     }
 }

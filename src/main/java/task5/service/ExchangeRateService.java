@@ -2,8 +2,8 @@ package task5.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
-import task5.Constants;
 import task5.model.Currency;
 import task5.model.ExchangeRates;
 
@@ -19,8 +19,8 @@ public class ExchangeRateService {
     private static final Logger log = LoggerFactory.getLogger(ExchangeRateService.class);
     private List<ExchangeRates> listOfExchangeRates = new LinkedList<>();
 
-    public ExchangeRateService() {
-        initFromFile(Constants.TEMPLATE_EXCHANGE_RATE_FILENAME);
+    public ExchangeRateService(Environment environment) {
+        initFromFile(environment.getProperty("template.exchange.rate.filename"));
     }
 
     public void changeExchangeRate(Currency currencyFrom, Currency currencyTo, BigDecimal newRate) {
