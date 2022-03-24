@@ -5,14 +5,14 @@ import task5.exception.ObjectNotFoundException;
 import task5.model.Account;
 
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Repository
 public class AccountRepository {
-    private final List<Account> accountList = new LinkedList<>();
+    private final List<Account> accountList = new CopyOnWriteArrayList<>();
 
     public List<Account> getAllAccounts() {
         return accountList.stream().sorted(Comparator.comparing(Account::getId)).collect(Collectors.toList());
