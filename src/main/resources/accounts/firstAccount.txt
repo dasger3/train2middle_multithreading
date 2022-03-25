@@ -1,0 +1,4 @@
+Alexey Voronin
+USD 10.0
+UAN 600.0
+EUR 50.0
