@@ -10,17 +10,15 @@ import task5.model.Exchange;
 import task5.model.Wallet;
 
 import java.math.BigDecimal;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Service
 public class ExchangerService {
     private final AccountService accountService;
     private final ExchangeRateService exchangeRateService;
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
-
-    private final Map<UUID, Exchange> queue = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<Exchange> queue = new ConcurrentLinkedQueue<>();
 
     public ExchangerService(AccountService accountService, ExchangeRateService exchangeRateService) {
         this.accountService = accountService;
@@ -28,49 +26,47 @@ public class ExchangerService {
     }
 
     public void exchange(Long accountId, Currency from, Currency to, BigDecimal value) {
-
-        Exchange exchange = new Exchange(accountId, from, to, value);
-        UUID uniqueKey = UUID.randomUUID();
-        queue.put(uniqueKey, exchange);
+        String uniqueKey = "" + accountId + from + to + "|" + value  + "|" + new Random().nextInt(10000);
+        Exchange exchange = new Exchange(uniqueKey, accountId, from, to, value);
+        queue.add(exchange);
         run();
     }
 
-    public synchronized void run() {
-            for (Map.Entry<UUID, Exchange> uuidExchangeEntry : queue.entrySet()) {
+    public void run() {
+        if (queue.isEmpty()) {
+            return;
+        }
+        Exchange exchange = queue.poll();
+        String uniqueKey = exchange.getId();
 
-                UUID uniqueKey = uuidExchangeEntry.getKey();
-                Long accountId = uuidExchangeEntry.getValue().getAccountId();
-                Currency from = uuidExchangeEntry.getValue().getFrom();
-                Currency to = uuidExchangeEntry.getValue().getTo();
-                BigDecimal value = uuidExchangeEntry.getValue().getValue();
+        try {
+            Long accountId = exchange.getAccountId();
+            Currency from = exchange.getFrom();
+            Currency to = exchange.getTo();
+            BigDecimal value = exchange.getValue();
 
-                try {
+            System.out.println(
+                    "Exchange with number: " + uniqueKey + " with params: " + accountId + "|" + from + "|" +
+                            to +
+                            "|" + value);
+            Wallet wallet = accountService.findAccountById(accountId).getWallet();
 
-                    System.out.println(
-                            "Exchange with number: " + uniqueKey + " with params: " + accountId + "|" + from + "|" +
-                                    to +
-                                    "|" + value);
-                    Wallet wallet = accountService.findAccountById(accountId).getWallet();
+            BigDecimal rate = exchangeRateService.getExchangeRate(from, to);
 
-                    BigDecimal rate = exchangeRateService.getExchangeRate(from, to);
+            BigDecimal newBalance = wallet.getBalance().get(from).subtract(value);
 
-                    BigDecimal newBalance = wallet.getBalance().get(from).subtract(value);
-
-                    if (newBalance.doubleValue() < 0) {
-                        throw new NotEnoughMoneyException(from.getCurrency());
-                    }
-
-                    wallet.getBalance().put(from, newBalance);
-                    wallet.getBalance().put(to, wallet.getBalance().get(to).add(value.multiply(rate)));
-
-                    accountService.updateWalletById(wallet, accountId);
-                    System.out.println("Exchange with number: " + uniqueKey + " successfully completed");
-                } catch (ObjectNotFoundException | NotEnoughMoneyException e) {
-                    log.error(e.getMessage());
-                    System.out.println("Exchange with number: " + uniqueKey + " completed unsuccessfully");
-                } finally {
-                    queue.remove(uniqueKey);
-                }
+            if (newBalance.doubleValue() < 0) {
+                throw new NotEnoughMoneyException(from.getCurrency());
             }
+
+            wallet.getBalance().put(from, newBalance);
+            wallet.getBalance().put(to, wallet.getBalance().get(to).add(value.multiply(rate)));
+
+            accountService.updateWalletById(wallet, accountId);
+            System.out.println("Exchange with number: " + uniqueKey + " successfully completed");
+        } catch (ObjectNotFoundException | NotEnoughMoneyException e) {
+            log.error(e.getMessage());
+            System.out.println("Exchange with number: " + uniqueKey + " completed unsuccessfully");
+        }
     }
 }

@@ -12,6 +12,7 @@ import task5.repository.AccountRepository;
 
 import java.io.FileNotFoundException;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -27,6 +28,10 @@ public class AccountService {
 
     public Account findAccountById(Long id) throws ObjectNotFoundException {
         return accountRepository.findById(id);
+    }
+
+    public List<Account> getAllAccounts() {
+        return accountRepository.getAllAccounts();
     }
 
     public void updateWalletById(Wallet wallet, Long accountId) throws ObjectNotFoundException {
